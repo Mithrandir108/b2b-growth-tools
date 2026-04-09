@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ROI Calculator | Fractional CGO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Lora:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+/* ============================================================
+   CONFIG — Edit this block to customise the tool
+   ============================================================ */
+const CONFIG = {
+  /* Branding */
+  title:        "Calculate Your Potential ROI",
+  subtitle:     "Answer a few questions to see what a Fractional CGO could do for your revenue.",
+  currency:     "€",                          // "€" | "$" | "£"
+
+  /* Engagement economics */
+  investment:   50000,                         // Annual fractional CGO investment (currency units)
+  upliftRate:   0.50,                          // Assumed conversion-rate uplift (0.50 = +50%)
+  maxConvCap:   0.30,                          // Hard cap on resulting conversion rate
+
+  /* Trajectory model */
+  baseGrowthMoM:   0.005,                      // Baseline MoM revenue growth (no CGO)
+  upliftGrowthMoM: 0.025,                      // MoM growth with CGO (post ramp-up)
+  rampUpMonths:    2,                          // Months before full uplift kicks in
+
+  /* Form defaults */
+  defaults: {
+    salesReps:    5,
+    avgSalary:    80000,
+    pipeline:     5000000,
+    conversion:   12,                          // %
+    salesCycle:   9,                           // months
+  },
+
+  /* CTA */
+  ctaLabel:  "Book a 15-minute call",
+  ctaUrl:    "https://tidycal.com/negreflorian/15minute-m22dr9n",
+  ctaSub:    "No commitment. 15 minutes to see if there's a fit.",
+};
+/* ============================================================ */
+</script>
+
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Inter', sans-serif; background: #fafaf8; padding: 40px 20px; color: #242322; }
+.calculator-container { max-width: 700px; margin: 0 auto; background: #fff; border-radius: 12px; padding: 48px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+h1 { font-family: 'Lora', serif; font-size: 2rem; font-weight: 700; margin-bottom: 12px; color: #242322; }
+.subtitle { font-size: 1rem; color: #6b7280; margin-bottom: 32px; }
+.step { display: none; }
+.step.active { display: block; }
+.form-group { margin-bottom: 28px; }
+label { display: block; font-weight: 600; margin-bottom: 8px; color: #242322; }
+input[type="number"] { width: 100%; padding: 12px 16px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 1rem; font-family: 'Inter', sans-serif; transition: border-color 0.2s; }
+input[type="number"]:focus { outline: none; border-color: #242322; }
+.slider-container { position: relative; margin-top: 12px; }
+input[type="range"] { width: 100%; height: 6px; background: #e5e7eb; border-radius: 3px; outline: none; -webkit-appearance: none; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; background: #242322; border-radius: 50%; cursor: pointer; }
+input[type="range"]::-moz-range-thumb { width: 20px; height: 20px; background: #242322; border-radius: 50%; cursor: pointer; border: none; }
+.slider-value { font-size: 1.5rem; font-weight: 600; color: #242322; margin-bottom: 8px; }
+.button-group { display: flex; gap: 16px; margin-top: 32px; }
+button { flex: 1; padding: 14px 24px; border: none; border-radius: 6px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s; font-family: 'Inter', sans-serif; }
+.btn-primary { background: #242322; color: #fff; }
+.btn-primary:hover { background: #000; transform: translateY(-2px); }
+.btn-secondary { background: #f3f4f6; color: #242322; }
+.btn-secondary:hover { background: #e5e7eb; }
+.results-container { text-align: center; }
+.roi-headline { font-family: 'Lora', serif; font-size: 2.5rem; font-weight: 700; color: #242322; margin-bottom: 4px; }
+.roi-subtext { font-size: 1rem; color: #6b7280; margin-bottom: 24px; }
+.metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 24px 0; text-align: center; }
+.metric { padding: 16px; background: #242322; border-radius: 8px; }
+.metric-value { font-family: 'Lora', serif; font-size: 1.6rem; font-weight: 700; color: #fdda24; margin-bottom: 4px; }
+.metric-label { font-size: 0.8rem; color: #959daf; text-transform: uppercase; letter-spacing: 0.05em; }
+.trajectory-section { background: #242322; border-radius: 10px; padding: 20px; margin: 24px 0; text-align: left; }
+.trajectory-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
+.trajectory-title { font-size: 12px; font-weight: 600; color: #fff; text-transform: uppercase; letter-spacing: 0.06em; }
+.trajectory-legend { display: flex; gap: 16px; }
+.tleg-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #959daf; }
+.tleg-dot { width: 10px; height: 3px; border-radius: 2px; flex-shrink: 0; }
+.gap-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(253,218,36,0.12); border: 0.5px solid rgba(253,218,36,0.3); border-radius: 6px; padding: 6px 12px; font-size: 12px; color: #fdda24; font-weight: 600; margin-bottom: 16px; }
+.gap-badge-label { color: #959daf; font-weight: 400; }
+.chart-wrap { position: relative; width: 100%; height: 220px; }
+.cta-block { margin-top: 28px; text-align: center; }
+.cta-block a { display: inline-block; background: #fdda24; color: #242322; font-family: 'Inter', sans-serif; font-weight: 700; font-size: 0.95rem; padding: 14px 36px; border-radius: 6px; text-decoration: none; transition: opacity 0.2s; }
+.cta-block a:hover { opacity: 0.88; }
+.cta-sub { margin-top: 10px; font-size: 12px; color: #6b7280; }
+@media (max-width: 640px) {
+  .calculator-container { padding: 32px 24px; }
+  h1 { font-size: 1.5rem; }
+  .metrics-grid { grid-template-columns: 1fr; gap: 12px; }
+  .trajectory-header { flex-direction: column; align-items: flex-start; }
+}
+</style>
+</head>
+<body>
+
+<div class="calculator-container">
+
+  <!-- STEP 1 -->
+  <div class="step active" id="step1">
+    <h1 id="cfg-title"></h1>
+    <p class="subtitle" id="cfg-subtitle"></p>
+    <div class="form-group">
+      <label for="salesReps">Number of sales representatives</label>
+      <input type="number" id="salesReps" min="1" max="50">
+    </div>
+    <div class="form-group">
+      <label for="avgSalary">Average salary per rep (<span class="cfg-currency"></span>/year)</label>
+      <input type="number" id="avgSalary" min="30000" max="200000" step="5000">
+    </div>
+    <div class="form-group">
+      <label for="pipeline">Annual pipeline (<span class="cfg-currency"></span>)</label>
+      <input type="number" id="pipeline" min="100000" max="100000000" step="100000">
+    </div>
+    <div class="button-group">
+      <button class="btn-primary" id="nextBtn1">Next ➜</button>
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="step" id="step2">
+    <h1>Your Sales Performance</h1>
+    <p class="subtitle">Tell us about your current conversion rate and sales cycle.</p>
+    <div class="form-group">
+      <label>Current conversion rate</label>
+      <div class="slider-value" id="conversionDisplay"></div>
+      <div class="slider-container">
+        <input type="range" id="conversion" min="3" max="30">
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="salesCycle">Sales cycle length (months)</label>
+      <input type="number" id="salesCycle" min="1" max="24">
+    </div>
+    <div class="button-group">
+      <button class="btn-secondary" id="backBtn2">← Back</button>
+      <button class="btn-primary" id="calculateBtn">Calculate ROI ➜</button>
+    </div>
+  </div>
+
+  <!-- STEP 3 — Results -->
+  <div class="step" id="step3">
+    <div class="results-container">
+      <div class="roi-headline" id="roiValue">—</div>
+      <p class="roi-subtext">Your potential return on investment</p>
+      <div class="metrics-grid">
+        <div class="metric">
+          <div class="metric-value" id="investmentValue">—</div>
+          <div class="metric-label">Investment</div>
+        </div>
+        <div class="metric">
+          <div class="metric-value" id="gainValue">—</div>
+          <div class="metric-label">Year 1 gain</div>
+        </div>
+        <div class="metric">
+          <div class="metric-value" id="paybackValue">—</div>
+          <div class="metric-label">Payback period</div>
+        </div>
+      </div>
+      <div class="trajectory-section">
+        <div class="trajectory-header">
+          <span class="trajectory-title">Revenue trajectory : 12 months</span>
+          <div class="trajectory-legend">
+            <div class="tleg-item"><div class="tleg-dot" style="background:#495057;"></div> Without CGO</div>
+            <div class="tleg-item"><div class="tleg-dot" style="background:#fdda24;"></div> With Fractional CGO</div>
+          </div>
+        </div>
+        <div class="gap-badge" id="gapBadge">
+          <span id="gapValue">—</span>
+          <span class="gap-badge-label">cumulative gain at M12</span>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="trajectoryChart"></canvas>
+        </div>
+      </div>
+      <div class="cta-block">
+        <a id="cfg-cta-link" href="#" target="_blank"></a>
+        <p class="cta-sub" id="cfg-cta-sub"></p>
+      </div>
+      <div class="button-group" style="margin-top: 24px;">
+        <button class="btn-secondary" id="resetBtn">← Start Over</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let trajectoryChart;
+
+/* ---- Inject CONFIG into DOM ---- */
+document.addEventListener('DOMContentLoaded', function () {
+  document.getElementById('cfg-title').textContent    = CONFIG.title;
+  document.getElementById('cfg-subtitle').textContent = CONFIG.subtitle;
+  document.querySelectorAll('.cfg-currency').forEach(function(el){ el.textContent = CONFIG.currency; });
+  document.getElementById('cfg-cta-link').textContent = CONFIG.ctaLabel;
+  document.getElementById('cfg-cta-link').href        = CONFIG.ctaUrl;
+  document.getElementById('cfg-cta-sub').textContent  = CONFIG.ctaSub;
+
+  /* Defaults */
+  document.getElementById('salesReps').value   = CONFIG.defaults.salesReps;
+  document.getElementById('avgSalary').value   = CONFIG.defaults.avgSalary;
+  document.getElementById('pipeline').value    = CONFIG.defaults.pipeline;
+  document.getElementById('conversion').value  = CONFIG.defaults.conversion;
+  document.getElementById('salesCycle').value  = CONFIG.defaults.salesCycle;
+  updateConversion();
+
+  /* Events */
+  document.getElementById('nextBtn1').addEventListener('click',    function(){ goToStep(2); });
+  document.getElementById('backBtn2').addEventListener('click',    function(){ goToStep(1); });
+  document.getElementById('calculateBtn').addEventListener('click', calculateROI);
+  document.getElementById('resetBtn').addEventListener('click',    resetCalculator);
+  document.getElementById('conversion').addEventListener('input',  updateConversion);
+});
+
+function goToStep(n) {
+  document.querySelectorAll('.step').forEach(function(s){ s.classList.remove('active'); });
+  var t = document.getElementById('step' + n);
+  if (t) t.classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function updateConversion() {
+  document.getElementById('conversionDisplay').textContent = document.getElementById('conversion').value + '%';
+}
+
+function fmt(v) {
+  var a = Math.abs(Math.round(v));
+  var prefix = (v < 0 ? '-' : '') + CONFIG.currency;
+  if (a >= 1000000) return prefix + (a / 1000000).toFixed(1) + 'M';
+  return prefix + Math.round(a / 1000) + 'K';
+}
+
+/* ---- Core model ---- */
+function calculateROI() {
+  var pipeline    = parseInt(document.getElementById('pipeline').value);
+  var currentConv = parseInt(document.getElementById('conversion').value) / 100;
+
+  var currentRevenue = pipeline * currentConv;
+  var targetConv     = Math.min(currentConv * (1 + CONFIG.upliftRate), CONFIG.maxConvCap);
+  var newRevenue     = pipeline * targetConv;
+  var gain           = newRevenue - currentRevenue;
+  var roi            = gain / CONFIG.investment;
+  var paybackMonths  = Math.ceil((CONFIG.investment / gain) * 12);
+
+  document.getElementById('roiValue').textContent       = roi.toFixed(1) + 'x';
+  document.getElementById('investmentValue').textContent = fmt(CONFIG.investment);
+  document.getElementById('gainValue').textContent       = fmt(gain);
+  document.getElementById('paybackValue').textContent    = paybackMonths + ' mo';
+
+  buildTrajectory(currentRevenue, newRevenue);
+  goToStep(3);
+}
+
+function buildTrajectory(baseRevenue, withRevenue) {
+  var labels = [], withoutData = [], withData = [];
+  var revBase = baseRevenue / 12;
+  var revWith = baseRevenue / 12;
+
+  for (var m = 0; m <= 12; m++) {
+    labels.push('M' + m);
+    withoutData.push(Math.round(revBase * 12));
+    withData.push(Math.round(revWith * 12));
+    revBase = revBase * (1 + CONFIG.baseGrowthMoM);
+    var mUplift = m < CONFIG.rampUpMonths ? CONFIG.baseGrowthMoM : CONFIG.upliftGrowthMoM;
+    revWith = revWith * (1 + mUplift);
+  }
+
+  var cumulativeGap = 0;
+  for (var i = 1; i <= 12; i++) cumulativeGap += (withData[i] - withoutData[i]);
+  document.getElementById('gapValue').textContent = '+' + fmt(cumulativeGap);
+
+  var ctx = document.getElementById('trajectoryChart');
+  if (trajectoryChart) trajectoryChart.destroy();
+
+  trajectoryChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: 'Without CGO', data: withoutData, borderColor: '#495057', backgroundColor: 'rgba(73,80,87,0.06)', borderWidth: 1.5, fill: true, tension: 0.4, pointRadius: 0, borderDash: [4,4] },
+        { label: 'With Fractional CGO', data: withData, borderColor: '#fdda24', backgroundColor: 'rgba(253,218,36,0.07)', borderWidth: 2.5, fill: true, tension: 0.4, pointRadius: 0 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: { backgroundColor: '#28292a', titleColor: '#959daf', bodyColor: '#fff', borderColor: '#495057', borderWidth: 0.5, padding: 10,
+          callbacks: { label: function(c){ return c.dataset.label + ': ' + fmt(c.raw); } }
+        }
+      },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#959daf', font: { size: 10 }, maxTicksLimit: 7 } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#959daf', font: { size: 10 }, callback: function(v){ return fmt(v); } } }
+      }
+    }
+  });
+}
+
+function resetCalculator() {
+  document.getElementById('salesReps').value   = CONFIG.defaults.salesReps;
+  document.getElementById('avgSalary').value   = CONFIG.defaults.avgSalary;
+  document.getElementById('pipeline').value    = CONFIG.defaults.pipeline;
+  document.getElementById('conversion').value  = CONFIG.defaults.conversion;
+  document.getElementById('salesCycle').value  = CONFIG.defaults.salesCycle;
+  updateConversion();
+  if (trajectoryChart) trajectoryChart.destroy();
+  goToStep(1);
+}
+</script>
+</body>
+</html>

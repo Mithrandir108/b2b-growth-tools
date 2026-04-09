@@ -1,0 +1,177 @@
+# ============================================================
+# b2b-growth-tools — Default Configuration
+# ============================================================
+# Edit this file to customise all three tools without touching
+# the HTML source. Run `python scripts/generate_config.py` to
+# inject changes.
+#
+# Structure:
+#   - Top-level keys are shared across all tools
+#   - Tool-specific keys are nested under the tool slug
+# ============================================================
+
+# ── Shared branding ──────────────────────────────────────────
+currency: "€"           # "€" | "$" | "£"
+
+# ── ROI Calculator ───────────────────────────────────────────
+roi-calculator:
+  title: "Calculate Your Potential ROI"
+  subtitle: "Answer a few questions to see what a Fractional CGO could do for your revenue."
+
+  # Engagement economics
+  investment: 50000           # Annual fractional CGO cost (currency units)
+  upliftRate: 0.50            # Assumed conversion-rate uplift (0.50 = +50%)
+  maxConvCap: 0.30            # Hard cap on resulting conversion rate
+
+  # Trajectory model
+  baseGrowthMoM: 0.005        # Baseline MoM revenue growth (no CGO)
+  upliftGrowthMoM: 0.025      # MoM growth with CGO (post ramp-up)
+  rampUpMonths: 2             # Months before full uplift kicks in
+
+  # Form defaults
+  defaults:
+    salesReps: 5
+    avgSalary: 80000
+    pipeline: 5000000
+    conversion: 12            # %
+    salesCycle: 9             # months
+
+  # CTA
+  ctaLabel: "Book a 15-minute call"
+  ctaUrl: "https://tidycal.com/negreflorian/15minute-m22dr9n"
+  ctaSub: "No commitment. 15 minutes to see if there's a fit."
+
+# ── COO Gap Visualizer ───────────────────────────────────────
+coo-gap-visualizer:
+  title: "COO Gap Visualizer: Operational Maturity"
+  disclaimer: "Dashed line: World-Class Standard. Adjust sliders to visualise your operational gap."
+  pdfFilename: "COO-Gap-Analysis.pdf"
+  pdfFooterUrl: "www.negreflorian.com"
+
+  # Radar axes — add/remove items freely (max 8 recommended)
+  dimensions:
+    - label: "Processes"
+      default: 5
+    - label: "Tech Stack"
+      default: 5
+    - label: "Scalability"
+      default: 5
+    - label: "Human Capital"
+      default: 5
+    - label: "Governance & Data"
+      default: 5
+
+  benchmark: 9               # Target benchmark line (same value for all axes)
+  accentColor: "#c15f3c"
+  benchmarkColor: "#e0e0e0"
+
+# ── RevOps Roadmap Simulator ─────────────────────────────────
+revops-roadmap-simulator:
+  title: "RevOps Roadmap Simulator"
+  subtitle: "Select a template and activate the building blocks that match your needs. Your roadmap builds in real time."
+
+  pdfFilename: "revops-roadmap.pdf"
+  pdfFooter: "negreflorian.com  ·  RevOps Architecture & AI Strategy"
+  pdfEmailLine: true
+
+  # Lead capture — leave webhookUrl empty ("") to skip modal and download PDF directly
+  modalTitle: "Get your roadmap"
+  modalSubtitle: "Enter your email to download your personalized RevOps roadmap as a PDF."
+  modalConsent: "I agree to receive insights and updates on RevOps and AI strategy."
+  webhookUrl: ""              # e.g. "https://your-site.netlify.app/.netlify/functions/submit-roadmap"
+
+  QUARTERS:
+    - "Q1 (0–3M)"
+    - "Q2 (3–6M)"
+    - "Q3 & Q4 (6–12M)"
+
+  TEMPLATES:
+    quick:
+      label: "Quick Win"
+      badge: "6 months"
+      description: "High-impact, fast-deploy blocks to generate early momentum."
+      blocks: [mt2, ma2, ma4, mt1, ma3, bb4, ma1, bb7]
+      months: 6
+    core:
+      label: "Core Build"
+      badge: "8 months"
+      description: "Structured RevOps foundation with demand gen and AI integrations."
+      blocks: [sg1, bb4, bb6, bb7, mt2, ai2, bb1, bb2, mt3, bb5, bb8, sg5, sg7, bb3, sg2, sg3]
+      months: 8
+    full:
+      label: "Full Stack"
+      badge: "11 months"
+      description: "Complete revenue infrastructure — from data to governance."
+      blocks: [sg1, mt2, ma2, ma4, mt1, ma3, bb4, bb6, ma1, bb7, sm1, ai2, bb1, sm2, bb2, mt3, mt4, bb5, bb8, ai3, ai1, sg5, sg7, bb3, sg2, sg3, sg4, sg6]
+      months: 11
+
+  CATEGORIES:
+    - id: bb
+      name: "Building Blocks"
+      cls: cat-bb
+      tlCls: tl-bb
+      pdfColor: [174, 235, 254]
+      blocks:
+        - { id: bb1, label: "Data Enrichment",              quarter: 2 }
+        - { id: bb2, label: "Buyer Intent Scoring",         quarter: 2 }
+        - { id: bb3, label: "Revenue Analytics",            quarter: 3 }
+        - { id: bb4, label: "Outbound Stack",               quarter: 1 }
+        - { id: bb5, label: "AI Lead Qualification",        quarter: 2 }
+        - { id: bb6, label: "SEO / AIO Suite",              quarter: 1 }
+        - { id: bb7, label: "Tools Analytics",              quarter: 1 }
+        - { id: bb8, label: "Conversion Rate Optimization", quarter: 2 }
+
+    - id: ma
+      name: "Marketing Apps"
+      cls: cat-ma
+      tlCls: tl-ma
+      pdfColor: [184, 197, 255]
+      blocks:
+        - { id: ma1, label: "Interactive Data Viz", quarter: 1 }
+        - { id: ma2, label: "Engagement App",       quarter: 1 }
+        - { id: ma3, label: "Intelligence Feed",    quarter: 1 }
+        - { id: ma4, label: "Lead Capture App",     quarter: 1 }
+
+    - id: mt
+      name: "Custom Micro-Tools"
+      cls: cat-mt
+      tlCls: tl-mt
+      pdfColor: [190, 229, 216]
+      blocks:
+        - { id: mt1, label: "Campaign Hub",  quarter: 1 }
+        - { id: mt2, label: "Ticket System", quarter: 1 }
+        - { id: mt3, label: "Resources Hub", quarter: 2 }
+        - { id: mt4, label: "Client Portal", quarter: 2 }
+
+    - id: sm
+      name: "Stack Migrations"
+      cls: cat-sm
+      tlCls: tl-sm
+      pdfColor: [255, 192, 153]
+      blocks:
+        - { id: sm1, label: "Legacy CRM Replacement", quarter: 1 }
+        - { id: sm2, label: "Platform Transition",    quarter: 2 }
+
+    - id: ai
+      name: "AI Systems"
+      cls: cat-ai
+      tlCls: tl-ai
+      pdfColor: [206, 168, 240]
+      blocks:
+        - { id: ai1, label: "AI Agents",                quarter: 2 }
+        - { id: ai2, label: "AI Powered Automations",   quarter: 1 }
+        - { id: ai3, label: "AI Augmented Workflows",   quarter: 2 }
+
+    - id: sg
+      name: "Strategic Governance"
+      cls: cat-sg
+      tlCls: tl-sg
+      pdfColor: [255, 235, 153]
+      blocks:
+        - { id: sg1, label: "Strategic Diagnostic",        quarter: 1 }
+        - { id: sg2, label: "Steering",                    quarter: 3 }
+        - { id: sg3, label: "Iterations",                  quarter: 3 }
+        - { id: sg4, label: "Monitoring",                  quarter: 3 }
+        - { id: sg5, label: "Marketing Operations (MOps)", quarter: 2 }
+        - { id: sg6, label: "Maintenance",                 quarter: 3 }
+        - { id: sg7, label: "Growth Governance",           quarter: 2 }
