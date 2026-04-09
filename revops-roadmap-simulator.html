@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RevOps Roadmap Simulator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script>
+/* ============================================================
+   CONFIG — Edit this block to customise the tool
+   ============================================================ */
+const CONFIG = {
+  /* Branding */
+  title:    "RevOps Roadmap Simulator",
+  subtitle: "Select a template and activate the building blocks that match your needs. Your roadmap builds in real time.",
+
+  /* PDF export */
+  pdfFilename:  "revops-roadmap.pdf",
+  pdfFooter:    "negreflorian.com  ·  RevOps Architecture & AI Strategy",  // Bottom-left in PDF
+  pdfEmailLine: true,   // true = show "Generated for: {email}" bottom-right in PDF
+
+  /* Lead capture modal — set webhookUrl to "" to skip API call and go straight to PDF */
+  modalTitle:      "Get your roadmap",
+  modalSubtitle:   "Enter your email to download your personalized RevOps roadmap as a PDF.",
+  modalConsent:    "I agree to receive insights and updates on RevOps and AI strategy.",
+  webhookUrl:      "",  // e.g. "https://your-netlify-site.netlify.app/.netlify/functions/submit-roadmap"
+
+  /* Template labels → map to block IDs defined in CATEGORIES below */
+  TEMPLATES: {
+    quick: {
+      label: "Quick Win",
+      badge: "6 months",
+      description: "High-impact, fast-deploy blocks to generate early momentum.",
+      blocks: ['mt2','ma2','ma4','mt1','ma3','bb4','ma1','bb7'],
+      months: 6,
+    },
+    core: {
+      label: "Core Build",
+      badge: "8 months",
+      description: "Structured RevOps foundation with demand gen and AI integrations.",
+      blocks: ['sg1','bb4','bb6','bb7','mt2','ai2','bb1','bb2','mt3','bb5','bb8','sg5','sg7','bb3','sg2','sg3'],
+      months: 8,
+    },
+    full: {
+      label: "Full Stack",
+      badge: "11 months",
+      description: "Complete revenue infrastructure — from data to governance.",
+      blocks: ['sg1','mt2','ma2','ma4','mt1','ma3','bb4','bb6','ma1','bb7','sm1','ai2','bb1','sm2','bb2','mt3','mt4','bb5','bb8','ai3','ai1','sg5','sg7','bb3','sg2','sg3','sg4','sg6'],
+      months: 11,
+    },
+  },
+
+  /* Quarter labels */
+  QUARTERS: ['Q1 (0–3M)', 'Q2 (3–6M)', 'Q3 & Q4 (6–12M)'],
+
+  /* Building block categories — add/remove blocks freely */
+  CATEGORIES: [
+    {
+      id: 'bb', name: 'Building Blocks', cls: 'cat-bb', tlCls: 'tl-bb',
+      pdfColor: [174, 235, 254],
+      blocks: [
+        { id: 'bb1', label: 'Data Enrichment',            quarter: 2 },
+        { id: 'bb2', label: 'Buyer Intent Scoring',       quarter: 2 },
+        { id: 'bb3', label: 'Revenue Analytics',          quarter: 3 },
+        { id: 'bb4', label: 'Outbound Stack',             quarter: 1 },
+        { id: 'bb5', label: 'AI Lead Qualification',      quarter: 2 },
+        { id: 'bb6', label: 'SEO / AIO Suite',            quarter: 1 },
+        { id: 'bb7', label: 'Tools Analytics',            quarter: 1 },
+        { id: 'bb8', label: 'Conversion Rate Optimization', quarter: 2 },
+      ]
+    },
+    {
+      id: 'ma', name: 'Marketing Apps', cls: 'cat-ma', tlCls: 'tl-ma',
+      pdfColor: [184, 197, 255],
+      blocks: [
+        { id: 'ma1', label: 'Interactive Data Viz', quarter: 1 },
+        { id: 'ma2', label: 'Engagement App',       quarter: 1 },
+        { id: 'ma3', label: 'Intelligence Feed',    quarter: 1 },
+        { id: 'ma4', label: 'Lead Capture App',     quarter: 1 },
+      ]
+    },
+    {
+      id: 'mt', name: 'Custom Micro-Tools', cls: 'cat-mt', tlCls: 'tl-mt',
+      pdfColor: [190, 229, 216],
+      blocks: [
+        { id: 'mt1', label: 'Campaign Hub',    quarter: 1 },
+        { id: 'mt2', label: 'Ticket System',   quarter: 1 },
+        { id: 'mt3', label: 'Resources Hub',   quarter: 2 },
+        { id: 'mt4', label: 'Client Portal',   quarter: 2 },
+      ]
+    },
+    {
+      id: 'sm', name: 'Stack Migrations', cls: 'cat-sm', tlCls: 'tl-sm',
+      pdfColor: [255, 192, 153],
+      blocks: [
+        { id: 'sm1', label: 'Legacy CRM Replacement', quarter: 1 },
+        { id: 'sm2', label: 'Platform Transition',    quarter: 2 },
+      ]
+    },
+    {
+      id: 'ai', name: 'AI Systems', cls: 'cat-ai', tlCls: 'tl-ai',
+      pdfColor: [206, 168, 240],
+      blocks: [
+        { id: 'ai1', label: 'AI Agents',                  quarter: 2 },
+        { id: 'ai2', label: 'AI Powered Automations',     quarter: 1 },
+        { id: 'ai3', label: 'AI Augmented Workflows',     quarter: 2 },
+      ]
+    },
+    {
+      id: 'sg', name: 'Strategic Governance', cls: 'cat-sg', tlCls: 'tl-sg',
+      pdfColor: [255, 235, 153],
+      blocks: [
+        { id: 'sg1', label: 'Strategic Diagnostic',         quarter: 1 },
+        { id: 'sg2', label: 'Steering',                     quarter: 3 },
+        { id: 'sg3', label: 'Iterations',                   quarter: 3 },
+        { id: 'sg4', label: 'Monitoring',                   quarter: 3 },
+        { id: 'sg5', label: 'Marketing Operations (MOps)',  quarter: 2 },
+        { id: 'sg6', label: 'Maintenance',                  quarter: 3 },
+        { id: 'sg7', label: 'Growth Governance',            quarter: 2 },
+      ]
+    },
+  ],
+};
+/* ============================================================ */
+</script>
+
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #242322; --yellow: #fdda24; --white: #ffffff;
+  --gray: #9ca3af; --card: rgba(255,255,255,0.04);
+  --border: rgba(253,218,36,0.2); --border-hover: rgba(253,218,36,0.6);
+}
+body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--white); min-height: 100vh; padding: 60px 40px; }
+
+.sim-header { text-align: center; margin-bottom: 60px; }
+.sim-title { font-family: 'Lora', Georgia, serif; font-size: 40px; font-weight: 700; color: var(--white); margin-bottom: 12px; }
+.sim-subtitle { font-size: 16px; color: var(--gray); max-width: 600px; margin: 0 auto; }
+
+.section-label { font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--yellow); margin-bottom: 16px; }
+.templates { display: flex; gap: 16px; margin-bottom: 48px; flex-wrap: wrap; }
+.tpl-btn { flex: 1; min-width: 200px; padding: 20px 24px; background: var(--card); border: 2px solid var(--border); border-radius: 12px; cursor: pointer; text-align: left; transition: all 0.25s ease; color: var(--white); }
+.tpl-btn:hover { border-color: var(--border-hover); background: rgba(253,218,36,0.05); transform: translateY(-2px); }
+.tpl-btn.active { border-color: var(--yellow); background: rgba(253,218,36,0.08); box-shadow: 0 4px 12px rgba(253,218,36,0.2); }
+.tpl-btn .tpl-name { font-family: 'Lora', serif; font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+.tpl-btn .tpl-desc { font-size: 12px; color: var(--gray); line-height: 1.5; }
+.tpl-badge { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; margin-bottom: 10px; background: rgba(253,218,36,0.15); color: var(--yellow); }
+
+.blocks-section { margin-bottom: 48px; }
+.blocks-categories { display: flex; flex-direction: column; gap: 24px; }
+.cat-title-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.cat-dot { width: 10px; height: 10px; border-radius: 50%; }
+.cat-name { font-size: 14px; font-weight: 600; color: var(--white); }
+.cat-count { font-size: 12px; color: var(--gray); }
+.blocks-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.block-chip { padding: 10px 16px; border-radius: 8px; border: 2px solid; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s ease; background: var(--card); white-space: nowrap; }
+.block-chip:hover { transform: translateY(-1px); opacity: 0.9; }
+.block-chip.selected { opacity: 1; }
+.block-chip:not(.selected) { opacity: 0.4; }
+
+/* Category colours */
+.cat-bb .block-chip { border-color: #aeebfe; color: #aeebfe; }
+.cat-bb .block-chip.selected { background: rgba(174,235,254,0.12); }
+.cat-bb .cat-dot { background: #aeebfe; }
+.cat-ma .block-chip { border-color: #b8c5ff; color: #b8c5ff; }
+.cat-ma .block-chip.selected { background: rgba(184,197,255,0.12); }
+.cat-ma .cat-dot { background: #b8c5ff; }
+.cat-mt .block-chip { border-color: #bee5d8; color: #bee5d8; }
+.cat-mt .block-chip.selected { background: rgba(190,229,216,0.12); }
+.cat-mt .cat-dot { background: #bee5d8; }
+.cat-sm .block-chip { border-color: #ffc099; color: #ffc099; }
+.cat-sm .block-chip.selected { background: rgba(255,192,153,0.12); }
+.cat-sm .cat-dot { background: #ffc099; }
+.cat-ai .block-chip { border-color: #cea8f0; color: #cea8f0; }
+.cat-ai .block-chip.selected { background: rgba(206,168,240,0.12); }
+.cat-ai .cat-dot { background: #cea8f0; }
+.cat-sg .block-chip { border-color: #ffeb99; color: #ffeb99; }
+.cat-sg .block-chip.selected { background: rgba(255,235,153,0.12); }
+.cat-sg .cat-dot { background: #ffeb99; }
+
+/* Timeline */
+.timeline-section { margin-bottom: 48px; }
+.timeline-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.timeline-title { font-family: 'Lora', serif; font-size: 22px; font-weight: 600; }
+.timeline-summary { font-size: 13px; color: var(--gray); }
+.timeline-summary span { color: var(--yellow); font-weight: 600; }
+.timeline-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.month-col { background: var(--card); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 16px; min-height: 80px; }
+.month-label { font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--gray); margin-bottom: 12px; }
+.month-blocks { display: flex; flex-direction: column; gap: 6px; }
+.tl-block { padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: 500; border-left: 3px solid; }
+.tl-bb { border-color: #aeebfe; background: rgba(174,235,254,0.08); color: #aeebfe; }
+.tl-ma { border-color: #b8c5ff; background: rgba(184,197,255,0.08); color: #b8c5ff; }
+.tl-mt { border-color: #bee5d8; background: rgba(190,229,216,0.08); color: #bee5d8; }
+.tl-sm { border-color: #ffc099; background: rgba(255,192,153,0.08); color: #ffc099; }
+.tl-ai { border-color: #cea8f0; background: rgba(206,168,240,0.08); color: #cea8f0; }
+.tl-sg { border-color: #ffeb99; background: rgba(255,235,153,0.08); color: #ffeb99; }
+.empty-timeline { grid-column: 1/-1; text-align: center; padding: 40px; color: var(--gray); font-size: 14px; }
+
+/* CTA */
+.cta-section { text-align: center; }
+.cta-btn { background: var(--yellow); color: #242322; font-weight: 700; font-size: 16px; padding: 18px 48px; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; font-family: 'Inter', sans-serif; }
+.cta-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(253,218,36,0.3); }
+.cta-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.cta-note { font-size: 12px; color: var(--gray); margin-top: 12px; }
+
+/* Modal */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 1000; }
+.modal-overlay.visible { display: flex; }
+.modal { background: #1a1918; border: 1px solid rgba(253,218,36,0.2); border-radius: 16px; padding: 40px; max-width: 480px; width: 90%; }
+.modal-title { font-family: 'Lora', serif; font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+.modal-sub { font-size: 14px; color: var(--gray); margin-bottom: 28px; line-height: 1.6; }
+.form-group { margin-bottom: 20px; }
+.form-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--gray); }
+.form-input { width: 100%; padding: 12px 16px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: var(--white); font-size: 14px; font-family: 'Inter', sans-serif; }
+.form-input:focus { outline: none; border-color: var(--yellow); }
+.form-error { font-size: 12px; color: #f87171; margin-top: 6px; min-height: 18px; }
+.checkbox-row { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; color: var(--gray); cursor: pointer; line-height: 1.5; }
+.checkbox-row input { margin-top: 2px; accent-color: var(--yellow); flex-shrink: 0; }
+.modal-actions { display: flex; gap: 12px; margin-top: 28px; }
+.btn-cancel { flex: 1; padding: 14px; background: transparent; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; color: var(--gray); font-size: 14px; cursor: pointer; font-family: 'Inter', sans-serif; }
+.btn-primary { flex: 2; padding: 14px; background: var(--yellow); border: none; border-radius: 8px; color: #242322; font-size: 14px; font-weight: 700; cursor: pointer; font-family: 'Inter', sans-serif; }
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+.loading-spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #242322; border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.modal-success { text-align: center; padding: 20px 0; display: none; }
+.check-icon { font-size: 48px; color: var(--yellow); margin-bottom: 16px; }
+.modal-success h3 { font-size: 20px; margin-bottom: 8px; }
+.modal-success p { color: var(--gray); font-size: 14px; }
+
+@media (max-width: 768px) {
+  body { padding: 32px 20px; }
+  .sim-title { font-size: 28px; }
+  .timeline-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="sim-header">
+  <h1 class="sim-title" id="cfg-title"></h1>
+  <p class="sim-subtitle" id="cfg-subtitle"></p>
+</div>
+
+<!-- TEMPLATES -->
+<div class="section-label">Choose a template</div>
+<div class="templates" id="templates-container"></div>
+
+<!-- BLOCKS -->
+<div class="blocks-section">
+  <div class="section-label">Building blocks</div>
+  <div class="blocks-categories" id="categories-container"></div>
+</div>
+
+<!-- TIMELINE -->
+<div class="timeline-section">
+  <div class="timeline-header">
+    <div class="timeline-title">Deployment Timeline</div>
+    <div class="timeline-summary" id="timelineSummary">Select blocks to build your roadmap</div>
+  </div>
+  <div class="timeline-grid" id="timelineGrid">
+    <div class="empty-timeline">No blocks selected yet.</div>
+  </div>
+</div>
+
+<!-- CTA -->
+<div class="cta-section">
+  <button class="cta-btn" id="ctaBtn" disabled>Download My Roadmap PDF</button>
+  <p class="cta-note" id="ctaNote">Activate at least one block to download your roadmap</p>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div id="modalForm">
+      <h2 class="modal-title" id="cfg-modal-title"></h2>
+      <p class="modal-sub" id="cfg-modal-sub"></p>
+      <div class="form-group">
+        <label class="form-label">Email address</label>
+        <input type="email" class="form-input" id="emailInput" placeholder="you@company.com">
+        <div class="form-error" id="emailError"></div>
+      </div>
+      <div class="form-group">
+        <label class="checkbox-row">
+          <input type="checkbox" id="marketingCheck">
+          <span id="cfg-modal-consent"></span>
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" id="cancelBtn">Cancel</button>
+        <button class="btn-primary" id="submitBtn"><span id="submitLabel">Download PDF</span></button>
+      </div>
+    </div>
+    <div class="modal-success" id="modalSuccess">
+      <div class="check-icon">✓</div>
+      <h3>Your roadmap is downloading</h3>
+      <p>Your PDF is being generated and will download automatically.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+  /* ---- Inject CONFIG into DOM ---- */
+  document.getElementById('cfg-title').textContent         = CONFIG.title;
+  document.getElementById('cfg-subtitle').textContent      = CONFIG.subtitle;
+  document.getElementById('cfg-modal-title').textContent   = CONFIG.modalTitle;
+  document.getElementById('cfg-modal-sub').textContent     = CONFIG.modalSubtitle;
+  document.getElementById('cfg-modal-consent').textContent = CONFIG.modalConsent;
+
+  /* ---- Build template buttons ---- */
+  var tContainer = document.getElementById('templates-container');
+  Object.entries(CONFIG.TEMPLATES).forEach(function([key, tpl]) {
+    var btn = document.createElement('button');
+    btn.className = 'tpl-btn' + (key === 'quick' ? ' active' : '');
+    btn.setAttribute('data-tpl', key);
+    btn.innerHTML =
+      '<div class="tpl-badge">' + tpl.badge + '</div>' +
+      '<div class="tpl-name">' + tpl.label + '</div>' +
+      '<div class="tpl-desc">' + tpl.description + '</div>';
+    btn.addEventListener('click', function(){ selectTemplate(key); });
+    tContainer.appendChild(btn);
+  });
+
+  /* ---- Build category + chip UI ---- */
+  var cContainer = document.getElementById('categories-container');
+  CONFIG.CATEGORIES.forEach(function(cat) {
+    var row = document.createElement('div');
+    row.className = 'cat-row ' + cat.cls;
+    var chips = cat.blocks.map(function(b) {
+      var sel = selectedBlocks.has(b.id) ? ' selected' : '';
+      return '<div class="block-chip' + sel + '" data-id="' + b.id + '">' + b.label + '</div>';
+    }).join('');
+    row.innerHTML =
+      '<div class="cat-title-row">' +
+        '<div class="cat-dot"></div>' +
+        '<div class="cat-name">' + cat.name + '</div>' +
+        '<div class="cat-count">(' + cat.blocks.length + ')</div>' +
+      '</div>' +
+      '<div class="blocks-row">' + chips + '</div>';
+    cContainer.appendChild(row);
+  });
+
+  /* Wire chip clicks */
+  document.querySelectorAll('.block-chip').forEach(function(chip) {
+    chip.addEventListener('click', function() {
+      var id = this.getAttribute('data-id');
+      if (selectedBlocks.has(id)) { selectedBlocks.delete(id); this.classList.remove('selected'); }
+      else { selectedBlocks.add(id); this.classList.add('selected'); }
+      currentTemplate = 'custom';
+      document.querySelectorAll('.tpl-btn').forEach(function(b){ b.classList.remove('active'); });
+      renderTimeline();
+    });
+  });
+
+  /* Modal & CTA */
+  document.getElementById('ctaBtn').addEventListener('click', openModal);
+  document.getElementById('cancelBtn').addEventListener('click', closeModal);
+  document.getElementById('submitBtn').addEventListener('click', submitEmail);
+  document.getElementById('modalOverlay').addEventListener('click', function(e){
+    if (e.target === this) closeModal();
+  });
+
+  selectTemplate('quick');
+});
+
+/* ---- State ---- */
+var selectedBlocks = new Set(CONFIG.TEMPLATES.quick.blocks);
+var currentTemplate = 'quick';
+
+/* ---- Template selection ---- */
+function selectTemplate(tpl) {
+  currentTemplate = tpl;
+  var tplDef = CONFIG.TEMPLATES[tpl];
+  if (tplDef) selectedBlocks = new Set(tplDef.blocks);
+
+  document.querySelectorAll('.tpl-btn').forEach(function(b){ b.classList.remove('active'); });
+  var btn = document.querySelector('[data-tpl="' + tpl + '"]');
+  if (btn) btn.classList.add('active');
+
+  /* Sync chip states */
+  document.querySelectorAll('.block-chip').forEach(function(chip) {
+    var id = chip.getAttribute('data-id');
+    chip.classList.toggle('selected', selectedBlocks.has(id));
+  });
+
+  renderTimeline();
+}
+
+/* ---- Timeline rendering ---- */
+function renderTimeline() {
+  var grid    = document.getElementById('timelineGrid');
+  var summary = document.getElementById('timelineSummary');
+  var ctaBtn  = document.getElementById('ctaBtn');
+  var ctaNote = document.getElementById('ctaNote');
+
+  var active = getAllActiveBlocks();
+
+  if (active.length === 0) {
+    grid.innerHTML = '<div class="empty-timeline">No blocks selected yet. Activate blocks above to build your roadmap.</div>';
+    summary.innerHTML = 'Select blocks to build your roadmap';
+    ctaBtn.disabled = true;
+    ctaNote.textContent = 'Activate at least one block to download your roadmap';
+    return;
+  }
+
+  var colData = CONFIG.QUARTERS.map(function(label){ return { label: label, blocks: [] }; });
+  active.forEach(function(b) {
+    var col = Math.min(b.quarter - 1, 2);
+    colData[col].blocks.push(b);
+  });
+
+  grid.innerHTML = colData.map(function(col) {
+    return '<div class="month-col">' +
+      '<div class="month-label">' + col.label + '</div>' +
+      '<div class="month-blocks">' +
+        col.blocks.map(function(b){ return '<div class="tl-block ' + b.tlCls + '">' + b.label + '</div>'; }).join('') +
+      '</div></div>';
+  }).join('');
+
+  var months = estimateMonths(active);
+  summary.innerHTML = '<span>' + active.length + '</span> blocks · Estimated <span>~' + months + ' months</span> to full deployment';
+  ctaBtn.disabled = false;
+  ctaNote.textContent = 'Your roadmap PDF will be generated and downloaded';
+}
+
+function getAllActiveBlocks() {
+  var result = [];
+  CONFIG.CATEGORIES.forEach(function(cat) {
+    cat.blocks.forEach(function(b) {
+      if (selectedBlocks.has(b.id)) result.push(Object.assign({}, b, { tlCls: cat.tlCls, pdfColor: cat.pdfColor, catName: cat.name }));
+    });
+  });
+  return result;
+}
+
+function estimateMonths(active) {
+  var tplDef = CONFIG.TEMPLATES[currentTemplate];
+  if (tplDef) return tplDef.months;
+  var maxQ = active.length ? Math.max.apply(null, active.map(function(b){ return b.quarter; })) : 0;
+  return maxQ <= 1 ? 3 : maxQ <= 2 ? 6 : 9;
+}
+
+/* ---- Modal ---- */
+function openModal() {
+  /* If no webhook configured, skip modal and go straight to PDF */
+  if (!CONFIG.webhookUrl) {
+    var active = getAllActiveBlocks();
+    generatePDF('', active, estimateMonths(active));
+    return;
+  }
+  document.getElementById('modalOverlay').classList.add('visible');
+  document.getElementById('emailInput').focus();
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('visible');
+  document.getElementById('emailError').textContent = '';
+  document.getElementById('emailInput').value = '';
+  document.getElementById('marketingCheck').checked = false;
+  document.getElementById('modalForm').style.display = 'block';
+  document.getElementById('modalSuccess').style.display = 'none';
+  document.getElementById('submitLabel').textContent = 'Download PDF';
+  document.getElementById('submitBtn').disabled = false;
+}
+
+async function submitEmail() {
+  var email    = document.getElementById('emailInput').value.trim();
+  var marketing = document.getElementById('marketingCheck').checked;
+  var errorEl  = document.getElementById('emailError');
+  var submitBtn = document.getElementById('submitBtn');
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    errorEl.textContent = 'Please enter a valid email address.';
+    return;
+  }
+  errorEl.textContent = '';
+  submitBtn.disabled = true;
+  document.getElementById('submitLabel').innerHTML = '<span class="loading-spinner"></span>';
+
+  var active = getAllActiveBlocks();
+  var months = estimateMonths(active);
+
+  if (CONFIG.webhookUrl) {
+    try {
+      await fetch(CONFIG.webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email, acceptMarketing: marketing,
+          template: currentTemplate,
+          blocksSelected: active.map(function(b){ return b.label; }),
+          totalBlocks: active.length,
+          estimatedMonths: months
+        })
+      });
+    } catch (err) { console.error('Webhook error:', err); }
+  }
+
+  generatePDF(email, active, months);
+  document.getElementById('modalForm').style.display = 'none';
+  document.getElementById('modalSuccess').style.display = 'block';
+  setTimeout(closeModal, 3000);
+}
+
+/* ---- PDF generation ---- */
+function generatePDF(email, blocks, months) {
+  var { jsPDF } = window.jspdf;
+  var doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  var W = 297, H = 210;
+
+  doc.setFillColor(36,35,34); doc.rect(0,0,W,H,'F');
+  doc.setFillColor(253,218,36); doc.rect(0,0,W,2,'F');
+
+  doc.setTextColor(255,255,255); doc.setFontSize(28); doc.setFont('helvetica','bold');
+  doc.text(CONFIG.title, 24, 28);
+  doc.setFontSize(11); doc.setFont('helvetica','normal'); doc.setTextColor(156,163,175);
+  var tplLabel = CONFIG.TEMPLATES[currentTemplate] ? CONFIG.TEMPLATES[currentTemplate].label : 'Custom';
+  doc.text('Template: ' + tplLabel + '  ·  ' + blocks.length + ' blocks  ·  ~' + months + ' months', 24, 38);
+
+  var colW = (W-48)/3, startX = 24, startY = 52;
+  doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
+  CONFIG.QUARTERS.forEach(function(q,i){ doc.text(q.toUpperCase(), startX + i*colW + 4, startY); });
+  doc.setDrawColor(253,218,36,0.3); doc.setLineWidth(0.3); doc.line(24, startY+4, W-24, startY+4);
+
+  var colData = [[],[],[]];
+  blocks.forEach(function(b){ colData[Math.min(b.quarter-1,2)].push(b); });
+
+  colData.forEach(function(colBlocks, ci) {
+    var y = startY + 12;
+    colBlocks.forEach(function(b) {
+      var c = b.pdfColor || [255,255,255];
+      doc.setFillColor(c[0],c[1],c[2],0.15); doc.setDrawColor(c[0],c[1],c[2]); doc.setLineWidth(0.4);
+      doc.roundedRect(startX + ci*colW + 2, y, colW-6, 10, 2, 2, 'FD');
+      doc.setTextColor(c[0],c[1],c[2]); doc.setFontSize(7); doc.setFont('helvetica','normal');
+      var label = b.label.length > 24 ? b.label.slice(0,22)+'…' : b.label;
+      doc.text(label, startX + ci*colW + 6, y+6.5);
+      y += 12;
+    });
+  });
+
+  /* Legend */
+  var lx = 24; doc.setFontSize(7);
+  CONFIG.CATEGORIES.forEach(function(cat) {
+    var c = cat.pdfColor;
+    doc.setFillColor(c[0],c[1],c[2]); doc.circle(lx+2, H-20, 2, 'F');
+    doc.setTextColor(156,163,175); doc.text(cat.name, lx+6, H-17);
+    lx += 40;
+  });
+
+  /* Footer */
+  doc.setDrawColor(253,218,36,0.3); doc.setLineWidth(0.3); doc.line(24, H-12, W-24, H-12);
+  doc.setFontSize(8); doc.setTextColor(156,163,175);
+  doc.text(CONFIG.pdfFooter, 24, H-7);
+  if (CONFIG.pdfEmailLine && email) {
+    doc.setTextColor(253,218,36);
+    doc.text('Generated for: ' + email, W-24, H-7, { align: 'right' });
+  }
+
+  doc.save(CONFIG.pdfFilename);
+}
+</script>
+</body>
+</html>
